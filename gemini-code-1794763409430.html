@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vánoční paměťová výzva</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { font-family: Arial, 'Noto Sans', sans-serif; }
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-950 via-emerald-950 to-blue-950 min-h-screen text-white flex flex-col items-center justify-between p-4 select-none">
+
+    <!-- Horní lišta / Ovládání hudby a učitelský panel -->
+    <header class="w-full max-w-5xl flex flex-wrap justify-between items-center bg-white/10 backdrop-blur-md p-4 rounded-2xl shadow-lg mb-4 gap-4">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🎄</span>
+            <h1 class="text-2xl font-bold tracking-wide text-yellow-300">Vánoční paměťová výzva</h1>
+        </div>
+
+        <!-- Ovládání hudby -->
+        <div class="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/10">
+            <button id="musicToggleBtn" onclick="toggleMusic()" class="bg-gray-600 hover:bg-emerald-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold">
+                🔇 Hudba: VYP
+            </button>
+            <div class="flex items-center gap-1">
+                <span class="text-xs">🔈</span>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.4" oninput="changeVolume(this.value)" class="w-20 accent-yellow-400 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="openGallery()" class="bg-amber-600 hover:bg-amber-500 text-sm font-semibold px-4 py-2 rounded-xl transition shadow">
+                🎁 Obrázky (30)
+            </button>
+            <button onclick="toggleTeacherPanel()" class="bg-emerald-700 hover:bg-emerald-600 text-sm font-semibold px-4 py-2 rounded-xl transition shadow">
+                👨‍🏫 Pro učitele
+            </button>
+        </div>
+    </header>
+
+    <!-- Hlavní obsah -->
+    <main class="w-full max-w-5xl flex flex-col items-center flex-grow justify-center">
+
+        <!-- Panel učitele (skrytý) -->
+        <div id="teacherPanel" class="hidden w-full bg-emerald-900/90 border border-emerald-500/50 p-4 rounded-2xl mb-6 shadow-2xl backdrop-blur-md">
+            <h3 class="text-lg font-bold text-yellow-300 mb-2 flex items-center gap-2">⚙️ Nastavení pro učitele</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <label class="block mb-1 text-emerald-200">Čas na prohlédnutí (s):</label>
+                    <input type="number" id="previewTimeInput" value="5" min="2" max="15" class="w-full bg-emerald-950 border border-emerald-600 rounded-lg p-2 text-center font-bold">
+                </div>
+                <div>
+                    <label class="block mb-1 text-emerald-200">Časovač:</label>
+                    <select id="timerMode" class="w-full bg-emerald-950 border border-emerald-600 rounded-lg p-2 font-bold">
+                        <option value="on">Zapnutý</option>
+                        <option value="off">Vypnutý (volné tempo)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block mb-1 text-emerald-200">Rychlý skok na úroveň:</label>
+                    <select id="levelJump" onchange="changeLevel(this.value)" class="w-full bg-emerald-950 border border-emerald-600 rounded-lg p-2 font-bold">
+                        <option value="1">1. Úroveň (3×3)</option>
+                        <option value="2">2. Úroveň (3×4)</option>
+                        <option value="3">3. Úroveň (4×4)</option>
+                        <option value="4">4. Úroveň (4×5)</option>
+                        <option value="5">5. Úroveň (5×5)</option>
+                        <option value="6">6. Úroveň (5×6)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Výběr úrovní -->
+        <div id="levelSelector" class="flex flex-wrap justify-center gap-2 mb-6">
+            <button onclick="setLevel(1)" id="lvlBtn1" class="px-4 py-2 rounded-xl font-bold bg-yellow-500 text-black shadow-lg transition transform hover:scale-105">1. Úroveň (3×3)</button>
+            <button onclick="setLevel(2)" id="lvlBtn2" class="px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition">2. Úroveň (3×4)</button>
+            <button onclick="setLevel(3)" id="lvlBtn3" class="px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition">3. Úroveň (4×4)</button>
+            <button onclick="setLevel(4)" id="lvlBtn4" class="px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition">4. Úroveň (4×5)</button>
+            <button onclick="setLevel(5)" id="lvlBtn5" class="px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition">5. Úroveň (5×5)</button>
+            <button onclick="setLevel(6)" id="lvlBtn6" class="px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition">6. Úroveň (5×6)</button>
+        </div>
+
+        <!-- Herní stavová lišta -->
+        <div class="w-full flex justify-between items-center bg-white/10 px-6 py-3 rounded-2xl mb-4 backdrop-blur-md shadow">
+            <div class="text-lg font-semibold">Celkem: <span id="scoreVal" class="text-yellow-300 font-bold">0</span> bodů</div>
+            <div class="text-sm font-semibold text-center">Úroveň: <span id="levelScore" class="text-yellow-300">0 / 10</span> • Úkol: <span id="roundVal" class="text-yellow-300">0 / 10</span></div>
+            <div id="statusMessage" class="text-xl font-bold text-yellow-300 animate-pulse text-center">Stiskněte START pro zahájení kola!</div>
+            <div class="flex items-center gap-4">
+                <div id="timerDisplay" class="text-lg font-semibold">Čas: <span id="timeVal" class="text-yellow-300">--</span>s</div>
+                <button id="startBtn" onclick="startGame()" class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-2 rounded-xl shadow-lg transition transform hover:scale-105">START</button>
+            </div>
+        </div>
+
+        <!-- Cílový obrázek k nalezení -->
+        <div id="targetContainer" class="hidden flex flex-col items-center bg-yellow-500/20 border border-yellow-400/50 p-3 rounded-2xl mb-4 backdrop-blur-md animate-bounce">
+            <span class="text-sm font-semibold text-yellow-200 mb-1">Najděte tento obrázek:</span>
+            <img id="targetImg" src="" alt="Hledaný obrázek" class="w-16 h-16 object-contain bg-white/10 rounded-xl p-1 shadow">
+        </div>
+
+        <!-- Herní mřížka -->
+        <div id="gridContainer" class="grid gap-3 justify-center items-center w-full max-w-4xl p-4 bg-black/20 rounded-3xl border border-white/10 shadow-2xl min-h-[350px]">
+            <div class="text-center text-gray-300 py-12 col-span-full">
+                <p class="text-xl mb-2">Vítejte v paměťové výzvě!</p>
+                <p class="text-sm text-gray-400">Kliknutím na tlačítko START spustíte hru a hned se rozezní vánoční hudba.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Patička -->
+    <footer class="mt-8 text-xs text-gray-400 text-center">
+        Vánoční paměťová výzva • Využívá 30 originálních vánočních ilustrací
+    </footer>
+
+    <!-- Modální okno - Galerie 30 obrázků -->
+    <div id="galleryModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-emerald-950 border border-emerald-600 w-full max-w-4xl max-h-[90vh] rounded-3xl p-6 overflow-y-auto shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border
