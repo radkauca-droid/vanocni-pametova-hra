@@ -457,10 +457,19 @@
                     setTimeout(askNextTarget, 750);
                 }
             } else {
-                // Chyba se nepočítá jako bod. Cílový obrázek zůstává stejný a dítě může zkusit znovu.
+                // Při chybě kartu skutečně otočíme obrázkem nahoru a označíme červeně.
+                // Po krátké chvíli ji znovu zakryjeme; hledaný obrázek zůstává stejný.
+                gameState = 'FEEDBACK';
+                if (timer) { clearInterval(timer); timer = null; }
+                cardElement.innerHTML = `<div class="w-full h-full bg-red-700/80 rounded-xl flex items-center justify-center p-2"><img src="${selected.src}" alt="${selected.name}" class="w-4/5 h-4/5 object-contain drop-shadow-md"></div>`;
                 cardElement.classList.add('ring-4', 'ring-red-500');
-                document.getElementById('statusMessage').textContent = 'To není ono. Zkus to znovu!';
-                setTimeout(() => cardElement.classList.remove('ring-4', 'ring-red-500'), 650);
+                document.getElementById('statusMessage').textContent = 'To není ono – podívej se na obrázek a zkus to znovu!';
+                setTimeout(() => {
+                    renderGrid(false);
+                    gameState = 'PLAYING';
+                    document.getElementById('statusMessage').textContent = 'Zkus najít hledaný obrázek.';
+                    startAnswerTimer();
+                }, 1200);
             }
         }
 
