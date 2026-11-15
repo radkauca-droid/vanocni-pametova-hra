@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vánoční paměťová výzva</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { font-family: Arial, 'Noto Sans', sans-serif; }
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-950 via-emerald-950 to-blue-950 min-h-screen text-white flex flex-col items-center justify-between p-4 select-none">
+
+    <!-- Horní lišta / Ovládání hudby a učitelský panel -->
+    <header class="w-full max-w-5xl flex flex-wrap justify-between items-center bg-white/10 backdrop-blur-md p-4 rounded-2xl shadow-lg mb-4 gap-4">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🎄</span>
+            <h1 class="text-2xl font-bold tracking-wide text-yellow-300">Vánoční paměťová výzva</h1>
+        </div>
+
+        <!-- Ovládání hudby -->
+        <div class="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/10">
+            <button id="musicToggleBtn" onclick="toggleMusic()" class="bg-gray-600 hover:bg-emerald-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold">
+                🔇 Hudba: VYP
+            </button>
+            <div class="flex items-center gap-1">
+                <span class="text-xs">🔈</span>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.4" oninput="changeVolume(this.value)" class="w-20 accent-yellow-400 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="openGallery()" class="bg-amber-600 hover:bg-amber-500 text-sm font-semibold px-4 py-2 rounded-xl transition shadow">
+                🎁 Obrázky (30)
+            </button>
+            <button onclick="toggleTeacherPanel()" class="bg-emerald-700 hover:bg-emerald-600 text-sm font-semibold px-4 py-2 rounded-xl transition shadow">
+                👨‍🏫 Pro učitele
+            </button>
+        </div>
+    </header>
+
+    <!-- Hlavní obsah -->
+    <main class="w-full max-w-5xl flex flex-col items-center flex-grow justify-center">
+
+        <!-- Panel učitele (skrytý) -->
+        <div id="teacherPanel" class="hidden w-full bg-emerald-900/90 border border-emerald-500/50 p-4 rounded-2xl mb-6 shadow-2xl backdrop-blur-md">
+            <h3 class="text-lg font-bold text-yellow-300 mb-2 flex items-center gap-2">⚙️ Nastavení pro učitele</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <label class="block mb-1 text-emerald-200">Čas na prohlédnutí (s):</label>
+                    <input type="number" id="previewTimeInput" value="5" min="2" max="15" class="w-full bg-emerald-950 border border-emerald-600
