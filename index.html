@@ -87,7 +87,8 @@
 
         <!-- Herní stavová lišta -->
         <div class="w-full flex justify-between items-center bg-white/10 px-6 py-3 rounded-2xl mb-4 backdrop-blur-md shadow">
-            <div class="text-lg font-semibold">Skóre: <span id="scoreVal" class="text-yellow-300 font-bold">0</span> bodů</div>
+            <div class="text-lg font-semibold">Celkem: <span id="scoreVal" class="text-yellow-300 font-bold">0</span> bodů</div>
+            <div class="text-sm font-semibold text-center">Úroveň: <span id="levelScore" class="text-yellow-300">0 / 10</span> • Úkol: <span id="roundVal" class="text-yellow-300">0 / 10</span></div>
             <div id="statusMessage" class="text-xl font-bold text-yellow-300 animate-pulse text-center">Stiskněte START pro zahájení kola!</div>
             <div class="flex items-center gap-4">
                 <div id="timerDisplay" class="text-lg font-semibold">Čas: <span id="timeVal" class="text-yellow-300">--</span>s</div>
@@ -176,9 +177,13 @@
         };
 
         let currentLevel = 1;
-        let score = 0;
+        let score = 0; // celkové skóre ze všech úrovní
+        let levelScore = 0;
+        let roundNumber = 0;
+        let targetQueue = [];
         let gameCards = [];
         let targetCard = null;
+        let foundCardIds = new Set();
         let gameState = 'IDLE'; // IDLE, PREVIEW, PLAYING, END
         let timer = null;
         let timeLeft = 0;
@@ -293,17 +298,24 @@
             document.getElementById('levelJump').value = currentLevel;
             for (let i = 1; i <= 6; i++) {
                 const btn = document.getElementById(`lvlBtn${i}`);
-                if (i === currentLevel) {
-                    btn.className = "px-4 py-2 rounded-xl font-bold bg-yellow-500 text-black shadow-lg transition transform hover:scale-105";
-                } else {
-                    btn.className = "px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition";
-                }
+                btn.className = i === currentLevel
+                    ? "px-4 py-2 rounded-xl font-bold bg-yellow-500 text-black shadow-lg transition transform hover:scale-105"
+                    : "px-4 py-2 rounded-xl font-bold bg-white/20 hover:bg-white/30 transition";
             }
+            levelScore = 0;
+            roundNumber = 0;
+            targetQueue = [];
+            foundCardIds = new Set();
+            updateScoreboard();
             resetGame();
         }
 
-        function changeLevel(lvl) {
-            setLevel(parseInt(lvl));
+        function changeLevel(lvl) { setLevel(parseInt(lvl)); }
+
+        function updateScoreboard() {
+            document.getElementById('scoreVal').textContent = score;
+            document.getElementById('levelScore').textContent = `${levelScore} / 10`;
+            document.getElementById('roundVal').textContent = `${roundNumber} / 10`;
         }
 
         function resetGame() {
@@ -312,36 +324,36 @@
             document.getElementById('gridContainer').innerHTML = `
                 <div class="text-center text-gray-300 py-12 col-span-full">
                     <p class="text-xl mb-2">Úroveň ${currentLevel} připravena!</p>
+                    <p class="text-sm text-gray-400">V této úrovni splňte 10 úkolů a získejte 10 bodů.</p>
                     <p class="text-sm text-gray-400">Stiskněte START pro zahájení kola.</p>
-                </div>
-            `;
+                </div>`;
             document.getElementById('targetContainer').classList.add('hidden');
             document.getElementById('statusMessage').textContent = 'Stiskněte START pro zahájení kola!';
             document.getElementById('timeVal').textContent = '--';
             document.getElementById('startBtn').textContent = 'START';
+            document.getElementById('startBtn').onclick = startGame;
             document.getElementById('startBtn').disabled = false;
+            updateScoreboard();
         }
 
         function startGame() {
             ensureMusicStarted();
+            if (timer) clearInterval(timer);
+            levelScore = 0;
+            roundNumber = 0;
+            foundCardIds = new Set();
+            const lvlConfig = levels[currentLevel];
+            gameCards = [...allImages].sort(() => Math.random() - 0.5).slice(0, lvlConfig.count);
+            targetQueue = makeTargetQueue();
+            updateScoreboard();
             document.getElementById('startBtn').disabled = true;
             document.getElementById('startBtn').textContent = 'Hra běží...';
-            
-            const lvlConfig = levels[currentLevel];
-            
-            // Náhodný výběr N obrázků z 30
-            let shuffledPool = [...allImages].sort(() => 0.5 - Math.random());
-            gameCards = shuffledPool.slice(0, lvlConfig.count);
-            
-            renderGrid(true); // lícem nahoru
-            
+            renderGrid(true);
             gameState = 'PREVIEW';
-            let previewTime = parseInt(document.getElementById('previewTimeInput').value) || 5;
+            const previewTime = Math.max(2, Math.min(15, parseInt(document.getElementById('previewTimeInput').value) || 5));
             timeLeft = previewTime;
             document.getElementById('timeVal').textContent = timeLeft;
             document.getElementById('statusMessage').textContent = 'Prohlédněte si rozmístění kartiček!';
-            
-            if (timer) clearInterval(timer);
             timer = setInterval(() => {
                 timeLeft--;
                 document.getElementById('timeVal').textContent = timeLeft;
@@ -352,113 +364,140 @@
             }, 1000);
         }
 
+        function makeTargetQueue() {
+            // V 1. úrovni je jen 9 kartiček, proto se desátý úkol losuje znovu.
+            // Ostatní úrovně mají alespoň 10 kartiček a v jednom kole se cíle neopakují.
+            return [...gameCards].sort(() => Math.random() - 0.5);
+        }
+
         function renderGrid(faceUp) {
             const grid = document.getElementById('gridContainer');
-            const lvlConfig = levels[currentLevel];
-            grid.style.gridTemplateColumns = `repeat(${lvlConfig.cols}, minmax(0, 1fr))`;
+            const cfg = levels[currentLevel];
+            grid.style.gridTemplateColumns = `repeat(${cfg.cols}, minmax(0, 1fr))`;
             grid.innerHTML = '';
-
             gameCards.forEach((card, index) => {
+                const found = foundCardIds.has(card.id);
                 grid.innerHTML += `
-                    <div onclick="handleCardClick(${index})" class="aspect-square bg-white/10 rounded-2xl p-2 cursor-pointer transition transform hover:scale-105 shadow-md flex items-center justify-center border border-white/20 relative overflow-hidden group" id="card-${index}">
-                        <div class="w-full h-full flex items-center justify-center transition-all duration-500">
-                            ${faceUp ? 
-                                `<img src="${card.src}" alt="${card.name}" class="w-4/5 h-4/5 object-contain drop-shadow-md">` :
-                                `<div class="w-full h-full bg-gradient-to-br from-red-700 to-emerald-800 rounded-xl flex items-center justify-center border-2 border-yellow-400/60 shadow-inner">
-                                    <span class="text-2xl">🎄</span>
-                                </div>`
-                            }
+                    <div onclick="handleCardClick(${index})" class="aspect-square bg-white/10 rounded-2xl p-2 cursor-pointer transition transform hover:scale-105 shadow-md flex items-center justify-center border border-white/20 relative overflow-hidden" id="card-${index}">
+                        <div class="w-full h-full flex items-center justify-center">
+                            ${faceUp || found
+                                ? `<img src="${card.src}" alt="${card.name}" class="w-4/5 h-4/5 object-contain drop-shadow-md">${found ? '<span class="absolute top-1 right-2 text-xl">✅</span>' : ''}`
+                                : `<div class="w-full h-full bg-gradient-to-br from-red-700 to-emerald-800 rounded-xl flex items-center justify-center border-2 border-yellow-400/60 shadow-inner"><span class="text-2xl">🎄</span></div>`}
                         </div>
-                    </div>
-                `;
+                    </div>`;
+                if (found) {
+                    const el = document.getElementById(`card-${index}`);
+                    if (el) el.classList.add('bg-emerald-600/70');
+                }
             });
         }
 
         function hideCardsAndAsk() {
-            renderGrid(false); // rubem nahoru
+            renderGrid(false);
             gameState = 'PLAYING';
-            
-            // Vyber náhodný cílový obrázek z těch, které jsou v mřížce
-            targetCard = gameCards[Math.floor(Math.random() * gameCards.length)];
-            
+            askNextTarget();
+        }
+
+        function askNextTarget() {
+            if (levelScore >= 10) { completeLevel(); return; }
+            if (targetQueue.length === 0) {
+                targetQueue = makeTargetQueue();
+                // V 1. úrovni zkusíme zabránit tomu, aby se hned opakoval předchozí cíl.
+                if (targetQueue.length > 1 && targetQueue[0].id === targetCard?.id) {
+                    [targetQueue[0], targetQueue[1]] = [targetQueue[1], targetQueue[0]];
+                }
+            }
+            targetCard = targetQueue.shift();
+            roundNumber++;
+            updateScoreboard();
             document.getElementById('targetImg').src = targetCard.src;
             document.getElementById('targetContainer').classList.remove('hidden');
-            
-            const timerMode = document.getElementById('timerMode').value;
-            if (timerMode === 'on') {
-                timeLeft = 12 + currentLevel * 3; // čas na rozmyšlenou podle obtížnosti
+            document.getElementById('statusMessage').textContent = `Najděte obrázek. Úkol ${roundNumber} z 10.`;
+            startAnswerTimer();
+        }
+
+        function startAnswerTimer() {
+            if (timer) clearInterval(timer);
+            const mode = document.getElementById('timerMode').value;
+            if (mode === 'on') {
+                timeLeft = 12 + currentLevel * 3;
                 document.getElementById('timeVal').textContent = timeLeft;
-                document.getElementById('statusMessage').textContent = 'Kde se nachází tento obrázek?';
-                
                 timer = setInterval(() => {
                     timeLeft--;
                     document.getElementById('timeVal').textContent = timeLeft;
                     if (timeLeft <= 0) {
                         clearInterval(timer);
-                        endGame(false, 'Čas vypršel!');
+                        document.getElementById('statusMessage').textContent = 'Čas vypršel. Zkus tento obrázek znovu.';
+                        setTimeout(startAnswerTimer, 900);
                     }
                 }, 1000);
             } else {
                 document.getElementById('timeVal').textContent = '∞';
-                document.getElementById('statusMessage').textContent = 'Kde se nachází tento obrázek?';
             }
         }
 
         function handleCardClick(index) {
             if (gameState !== 'PLAYING') return;
-
-            const selectedCard = gameCards[index];
+            const selected = gameCards[index];
             const cardElement = document.getElementById(`card-${index}`);
+            if (foundCardIds.has(selected.id)) return;
 
-            if (selectedCard.id === targetCard.id) {
-                // SPRÁVNĚ
+            if (selected.id === targetCard.id) {
                 if (timer) clearInterval(timer);
-                cardElement.innerHTML = `<div class="w-full h-full bg-emerald-600 rounded-xl flex items-center justify-center p-2"><img src="${selectedCard.src}" class="w-4/5 h-4/5 object-contain"><span class="absolute top-1 right-2 text-xl">✅</span></div>`;
-                score += 10 * currentLevel;
-                document.getElementById('scoreVal').textContent = score;
-                gameState = 'END';
-                document.getElementById('statusMessage').textContent = 'Správně! Úspěšně nalezeno! 🎉';
-                
-                setTimeout(() => {
-                    if (currentLevel < 6) {
-                        currentLevel++;
-                        setLevel(currentLevel);
-                        startGame();
-                    } else {
-                        document.getElementById('statusMessage').textContent = 'Gratulace! Prošli jste všechny úrovně! 🏆';
-                        document.getElementById('startBtn').textContent = 'HRÁT ZNOVU';
-                        document.getElementById('startBtn').disabled = false;
-                    }
-                }, 1800);
-
+                foundCardIds.add(selected.id);
+                levelScore++;
+                score++;
+                cardElement.innerHTML = `<div class="w-full h-full bg-emerald-600 rounded-xl flex items-center justify-center p-2"><img src="${selected.src}" class="w-4/5 h-4/5 object-contain"><span class="absolute top-1 right-2 text-xl">✅</span></div>`;
+                cardElement.classList.add('bg-emerald-600/70');
+                updateScoreboard();
+                document.getElementById('statusMessage').textContent = 'Správně! +1 bod. 🎉';
+                if (levelScore >= 10) {
+                    setTimeout(completeLevel, 900);
+                } else {
+                    setTimeout(askNextTarget, 750);
+                }
             } else {
-                // CHYBA
-                cardElement.innerHTML = `<div class="w-full h-full bg-red-600 rounded-xl flex items-center justify-center p-2"><img src="${selectedCard.src}" class="w-4/5 h-4/5 object-contain"><span class="absolute top-1 right-2 text-xl">❌</span></div>`;
-                
-                // Ukázat, kde byl správný obrázek
-                gameCards.forEach((c, i) => {
-                    if (c.id === targetCard.id) {
-                        document.getElementById(`card-${i}`).innerHTML = `<div class="w-full h-full bg-yellow-500 rounded-xl flex items-center justify-center p-2 border-2 border-white"><img src="${c.src}" class="w-4/5 h-4/5 object-contain"><span class="absolute top-1 right-2 text-xl">⭐</span></div>`;
-                    }
-                });
+                // Chyba se nepočítá jako bod. Cílový obrázek zůstává stejný a dítě může zkusit znovu.
+                cardElement.classList.add('ring-4', 'ring-red-500');
+                document.getElementById('statusMessage').textContent = 'To není ono. Zkus to znovu!';
+                setTimeout(() => cardElement.classList.remove('ring-4', 'ring-red-500'), 650);
+            }
+        }
 
-                if (timer) clearInterval(timer);
-                gameState = 'END';
-                document.getElementById('statusMessage').textContent = 'Chyba! Zde byl správný obrázek. 😢';
-                
-                setTimeout(() => {
-                    resetGame();
-                }, 2200);
+        function completeLevel() {
+            if (timer) clearInterval(timer);
+            gameState = 'END';
+            document.getElementById('targetContainer').classList.add('hidden');
+            document.getElementById('timeVal').textContent = '--';
+            if (currentLevel < 6) {
+                document.getElementById('statusMessage').textContent = `Výborně! Získáno 10 bodů. Dokončili jste ${currentLevel}. úroveň! 🏆`;
+                document.getElementById('startBtn').textContent = 'DALŠÍ ÚROVEŇ';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').onclick = () => {
+                    document.getElementById('startBtn').onclick = startGame;
+                    setLevel(currentLevel + 1);
+                    startGame();
+                };
+            } else {
+                document.getElementById('statusMessage').textContent = 'Gratulujeme! Dokončili jste všech 6 úrovní a získali až 60 bodů! 🏆';
+                document.getElementById('startBtn').textContent = 'HRÁT ZNOVU';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').onclick = () => {
+                    score = 0;
+                    document.getElementById('startBtn').onclick = startGame;
+                    setLevel(1);
+                    startGame();
+                };
             }
         }
 
         function endGame(success, msg) {
+            if (timer) clearInterval(timer);
             gameState = 'END';
             document.getElementById('statusMessage').textContent = msg;
-            setTimeout(() => {
-                resetGame();
-            }, 2000);
+            resetGame();
         }
+
     </script>
 </body>
 </html>
